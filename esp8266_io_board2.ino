@@ -11,11 +11,8 @@
 #define DHTTYPE DHT22
 #define ONE_WIRE_BUS_PIN 5
 
-#ifndef SETTINGS_H_
-#define SETTINGS_H_
 
-
-const int sleepTime = 1 * 10 * 1e6;
+const int sleepTime = 1 * 15 * 1e6;
 
 DHT dht(DHTPIN, DHTTYPE);
 OneWire oneWire(ONE_WIRE_BUS_PIN);
@@ -33,7 +30,6 @@ float dhtHum;
 float dhtTemp;
 
 RtcData rtcData;
-
 
 
 void mqttUpload(float ds18b20Temp, float dhtTemp, float dhtHum) {
@@ -60,13 +56,18 @@ void mqttUpload(float ds18b20Temp, float dhtTemp, float dhtHum) {
 		retries--;
 	}
 
-	client.publish("/v1/esp12f-1/esp12f1-ds18b20", String(ds18b20Temp).c_str());
-	delay(1);
-	client.publish("/v1/esp12f-1/esp12f1-dht22-temp", String(dhtTemp).c_str());
-	delay(1);
-	client.publish("/v1/esp12f-1/esp12f1-dht22-hum", String(dhtHum).c_str());
+  char buff[8];
+  snprintf (buff, sizeof(buff), "%.3f", ds18b20Temp);
+	client.publish("/v1/esp12f-1/esp12f1-ds18b20", buff);
+	delay(5);
+  snprintf (buff, sizeof(buff), "%.3f", dhtTemp);
+	client.publish("/v1/esp12f-1/esp12f1-dht22-temp", buff);
+	delay(5);
+  snprintf (buff, sizeof(buff), "%.3f", dhtHum);
+	client.publish("/v1/esp12f-1/esp12f1-dht22-hum", buff);
+	delay(5);
 	Serial.println("Publish complete");
-	delay(50);
+	delay(60);
 	client.disconnect();
 	unsigned long uploadTime = millis() - uploadStart;
 	Serial.print("Upload took: ");
@@ -79,28 +80,25 @@ void readSensors() {
 	digitalWrite(SENSOR_POWER_PIN, HIGH);
 	delay(1000);
 	dht.begin();
-	ds18b20Temp = readDS18b20();
 	dhtHum = readDhtHumidity();
-	dhtTemp = readDhtTemp();
+  dhtTemp = readDhtTemp();
+	ds18b20Temp = readDS18b20();
+	
 	digitalWrite(SENSOR_POWER_PIN, LOW);
 	unsigned long readTime = millis()-start;
 	Serial.print("Total sensor read time: ");
 	Serial.println(readTime);
 }
 
-void setup() {
+void run() {
 	unsigned long totalTimeStart = millis();
-
 	WiFi.mode(WIFI_OFF);
 	WiFi.forceSleepBegin();
 	delay(1);
-
 	Serial.begin(9600);
 	Serial.println("setup");
-
 	readSensors();
 	connectWifi();
-
 	mqttUpload(ds18b20Temp, dhtTemp, dhtHum);
 	Serial.print("Total time:");
 	Serial.println(millis() - totalTimeStart);
@@ -108,8 +106,12 @@ void setup() {
 	deepSleep();
 }
 
-void loop() {
+void setup() {
+  run();
+}
 
+void loop() {
+	
 }
 
 float readDS18b20() {
@@ -148,11 +150,12 @@ float readDhtTemp() {
 }
 
 void deepSleep() {
+
 	Serial.println("Going to sleep.");
 	WiFi.disconnect(true);
 	delay(1);
 	ESP.deepSleep(sleepTime, WAKE_RF_DISABLED);
-
+	//delay(15000);
 }
 
 void saveApChannelBssid() {
@@ -221,7 +224,7 @@ void connectWifi() {
 	Serial.print("Gateway address: ");
 	Serial.println(WiFi.gatewayIP());
 	Serial.print("DNS address: ");
-	WiFi.dnsIP().printTo(Serial);
+	WiFi.dnsIP().printTo(Serial); Serial.println("");
 
 
 }
