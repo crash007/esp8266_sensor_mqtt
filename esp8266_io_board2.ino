@@ -18,10 +18,6 @@ DHT dht(DHTPIN, DHTTYPE);
 OneWire oneWire(ONE_WIRE_BUS_PIN);
 DallasTemperature sensors(&oneWire);
 
-IPAddress ip(192, 168, 0, 155);
-IPAddress gateway(192, 168, 0, 1);
-IPAddress subnet(255, 255, 255, 0);
-
 WiFiClient espClient;
 PubSubClient client(espClient);
 
@@ -175,12 +171,18 @@ void deepSleep() {
 	WiFi.disconnect(true);
 	delay(1);
 	ESP.deepSleep(sleepTime, WAKE_RF_DISABLED);
-	//delay(15000);
+	//delay(11000);
 }
 
 void saveApChannelBssid() {
 	rtcData.channel = WiFi.channel();
 	memcpy(rtcData.ap_mac, WiFi.BSSID(), 6); // Copy 6 bytes of BSSID (AP's MAC address)
+
+	rtcData.ip = WiFi.localIP();
+	rtcData.subnet = WiFi.subnetMask();
+	rtcData.gateway = WiFi.gatewayIP();
+	rtcData.dns = WiFi.dnsIP();
+
 	rtcData.crc32 = calculateCRC32(((uint8_t*) (&rtcData)) + 4,
 			sizeof(rtcData) - 4);
 	ESP.rtcUserMemoryWrite(0, (uint32_t*) (&rtcData), sizeof(rtcData));
@@ -205,9 +207,11 @@ unsigned long wifiBegin() {
 	delay(1);
 	WiFi.persistent(false);
 	WiFi.mode(WIFI_STA);
-	WiFi.config(ip, gateway, subnet, gateway);
+
+
 	if (isRtcValid()) {
 		Serial.println("RTC is valid.");
+		WiFi.config(rtcData.ip, rtcData.gateway, rtcData.subnet, rtcData.dns);
 		WiFi.begin(SSID, WIFI_PASSWORD, rtcData.channel, rtcData.ap_mac, true);
 	} else {
 		Serial.println("RTC is not valid.");
@@ -240,7 +244,7 @@ void wifiWaitConnected() {
 			Serial.println("Failed to connect to WiFi. Going to sleep.");
 			deepSleep();
 		}
-		delay(50);
+		delay(100);
 	}
 }
 

@@ -13,6 +13,10 @@ struct RtcData{
 	uint32_t crc32;   // 4 bytes
 	uint8_t channel;  // 1 byte,   5 in total
 	uint8_t ap_mac[6]; // 6 bytes, 11 in total
+	uint32_t ip;
+	uint32_t gateway;
+	uint32_t subnet;
+	uint32_t dns;
 	uint8_t padding;  // 1 byte,  12 in total
 };
 
