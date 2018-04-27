@@ -123,16 +123,18 @@ void printAddress(DeviceAddress deviceAddress)
 float readDS18b20() {
 	unsigned long start = millis();
 	//sensors.begin();
-  //DeviceAddress address;
-	//oneWire.search(address);
-  //printAddress(address);
-  //printAddress(ds18b20Address);
-  //sensors.setResolution(ds18b20Address, 12);
-  sensors.setWaitForConversion(true);
+  /*DeviceAddress address;
+	oneWire.search(address);
+  printAddress(address);
+  printAddress(ds18b20Address);
+  sensors.setResolution(ds18b20Address, 12);
+  
+  Serial.print("Sensor Resolution: ");
+  Serial.println(sensors.getResolution(ds18b20Address), DEC); 
+  Serial.println();
+	*/
+	sensors.setWaitForConversion(true);
   sensors.setCheckForConversion(false);
-  //Serial.print("Sensor Resolution: ");
-  //Serial.println(sensors.getResolution(ds18b20Address), DEC); 
-  //Serial.println();
 	sensors.requestTemperaturesByAddress(ds18b20Address); 
 	float ds18b20Temp = sensors.getTempC(ds18b20Address);
 	unsigned long readTime = millis()-start;
