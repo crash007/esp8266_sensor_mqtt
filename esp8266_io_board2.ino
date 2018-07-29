@@ -11,8 +11,7 @@
 #define DHTTYPE DHT22
 #define ONE_WIRE_BUS_PIN 5
 
-
-const int sleepTime = 1 * 15 * 1e6;
+const int sleepTime = 15 * 60 * 1e6;
 
 DHT dht(DHTPIN, DHTTYPE);
 OneWire oneWire(ONE_WIRE_BUS_PIN);
@@ -28,9 +27,8 @@ float dhtTemp;
 
 RtcData rtcData;
 
-
 void mqttUpload(float ds18b20Temp, float dhtTemp, float dhtHum) {
-	int retries = 2;
+	int retries = 0;
 
 	unsigned long uploadStart = millis();
 	client.setServer(MQTT_SERVER, 1883);
@@ -45,22 +43,28 @@ void mqttUpload(float ds18b20Temp, float dhtTemp, float dhtHum) {
 			Serial.print("failed, rc=");
 			Serial.println(client.state());
 
-			if (retries == 0) {
+			if (retries == 1) {
+				wifiReconnectCachedBssid(); //After 2 failures to connect do a reconnect with a dhcp request.
+			}
+
+			if (retries == 3) {
+				//Unable to connect
 				deepSleep();
 			}
-			delay(1000);
+			delay(500);
 		}
-		retries--;
+		retries++;
 	}
 
-  char buff[8];
-  snprintf (buff, sizeof(buff), "%.3f", ds18b20Temp);
+
+	char buff[8];
+	snprintf(buff, sizeof(buff), "%.3f", ds18b20Temp);
 	client.publish("/v1/esp12f-1/esp12f1-ds18b20", buff);
 	delay(5);
-  snprintf (buff, sizeof(buff), "%.3f", dhtTemp);
+	snprintf(buff, sizeof(buff), "%.3f", dhtTemp);
 	client.publish("/v1/esp12f-1/esp12f1-dht22-temp", buff);
 	delay(5);
-  snprintf (buff, sizeof(buff), "%.3f", dhtHum);
+	snprintf(buff, sizeof(buff), "%.3f", dhtHum);
 	client.publish("/v1/esp12f-1/esp12f1-dht22-hum", buff);
 	delay(5);
 	Serial.println("Publish complete");
@@ -69,8 +73,8 @@ void mqttUpload(float ds18b20Temp, float dhtTemp, float dhtHum) {
 	unsigned long uploadTime = millis() - uploadStart;
 	Serial.print("Upload took: ");
 	Serial.println(uploadTime);
-}
 
+}
 
 void run() {
 	unsigned long totalTimeStart = millis();
@@ -82,7 +86,7 @@ void run() {
 
 	pinMode(SENSOR_POWER_PIN, OUTPUT);
 	digitalWrite(SENSOR_POWER_PIN, HIGH);
-	delay(500);
+	delay(550);
 	dht.begin();
 	dhtHum = readDhtHumidity();
 	dhtTemp = readDhtTemp();
@@ -90,10 +94,11 @@ void run() {
 	ds18b20Temp = readDS18b20();
 	digitalWrite(SENSOR_POWER_PIN, LOW);
 	wifiWaitConnected();
-	saveApChannelBssid();
 	printWifiInfo(wifiConnectStart);
-	
+
 	mqttUpload(ds18b20Temp, dhtTemp, dhtHum);
+	//Successfull connection, saving connection info.
+	saveApChannelBssid();
 	Serial.print("Total time:");
 	Serial.println(millis() - totalTimeStart);
 	Serial.println("");
@@ -101,43 +106,42 @@ void run() {
 }
 
 void setup() {
-  
+
 }
 
 void loop() {
 	run();
 }
 
-void printAddress(DeviceAddress deviceAddress)
-{
-  for (uint8_t i = 0; i < 8; i++)
-  {
-    if (deviceAddress[i] < 16) Serial.print("0");
-    Serial.print(deviceAddress[i], HEX);
-    Serial.print(", ");
-    
-  }
-  Serial.println("");
+void printAddress(DeviceAddress deviceAddress) {
+	for (uint8_t i = 0; i < 8; i++) {
+		if (deviceAddress[i] < 16)
+			Serial.print("0");
+		Serial.print(deviceAddress[i], HEX);
+		Serial.print(", ");
+
+	}
+	Serial.println("");
 }
 
 float readDS18b20() {
 	unsigned long start = millis();
 	//sensors.begin();
-  /*DeviceAddress address;
-	oneWire.search(address);
-  printAddress(address);
-  printAddress(ds18b20Address);
-  sensors.setResolution(ds18b20Address, 12);
-  
-  Serial.print("Sensor Resolution: ");
-  Serial.println(sensors.getResolution(ds18b20Address), DEC); 
-  Serial.println();
-	*/
+	/*DeviceAddress address;
+	 oneWire.search(address);
+	 printAddress(address);
+	 printAddress(ds18b20Address);
+	 sensors.setResolution(ds18b20Address, 12);
+
+	 Serial.print("Sensor Resolution: ");
+	 Serial.println(sensors.getResolution(ds18b20Address), DEC);
+	 Serial.println();
+	 */
 	sensors.setWaitForConversion(true);
-  sensors.setCheckForConversion(false);
-	sensors.requestTemperaturesByAddress(ds18b20Address); 
+	sensors.setCheckForConversion(false);
+	sensors.requestTemperaturesByAddress(ds18b20Address);
 	float ds18b20Temp = sensors.getTempC(ds18b20Address);
-	unsigned long readTime = millis()-start;
+	unsigned long readTime = millis() - start;
 	Serial.print("Ds18b20 temperature is: ");
 	Serial.print(ds18b20Temp);
 	Serial.print(", time: ");
@@ -148,7 +152,7 @@ float readDS18b20() {
 float readDhtHumidity() {
 	unsigned long start = millis();
 	float dhtHum = dht.readHumidity();
-	unsigned long readTime = millis()-start;
+	unsigned long readTime = millis() - start;
 	Serial.print("DHT22 humidity: ");
 	Serial.print(dhtHum);
 	Serial.print(", time: ");
@@ -159,7 +163,7 @@ float readDhtHumidity() {
 float readDhtTemp() {
 	unsigned long start = millis();
 	float dhtTemp = dht.readTemperature();
-	unsigned long readTime = millis()-start;
+	unsigned long readTime = millis() - start;
 	Serial.print("DHT22 Temp: ");
 	Serial.print(dhtTemp);
 	Serial.print(", time: ");
@@ -173,6 +177,7 @@ void deepSleep() {
 	WiFi.disconnect(true);
 	delay(1);
 	ESP.deepSleep(sleepTime, WAKE_RF_DISABLED);
+
 	//delay(11000);
 }
 
@@ -210,7 +215,6 @@ unsigned long wifiBegin() {
 	WiFi.persistent(false);
 	WiFi.mode(WIFI_STA);
 
-
 	if (isRtcValid()) {
 		Serial.println("RTC is valid.");
 		WiFi.config(rtcData.ip, rtcData.gateway, rtcData.subnet, rtcData.dns);
@@ -220,6 +224,58 @@ unsigned long wifiBegin() {
 		WiFi.begin(SSID, WIFI_PASSWORD);
 	}
 	return wifiConnectStart;
+}
+
+void wifiReconnectCachedBssid() {
+	WiFi.disconnect();
+	delay(10);
+	WiFi.forceSleepBegin();
+	delay(10);
+	WiFi.forceSleepWake();
+	delay(10);
+
+	if (isRtcValid()) {
+		WiFi.begin(SSID, WIFI_PASSWORD, rtcData.channel, rtcData.ap_mac, true);
+
+	} else {
+		WiFi.begin(SSID, WIFI_PASSWORD);
+	}
+
+  int retries = 0;
+  while (WiFi.status() != WL_CONNECTED) {
+    retries++;
+    if (WiFi.status() == WL_CONNECT_FAILED) {
+      Serial.println(
+          "Failed to connect to WiFi. Please verify credentials: ");
+      deepSleep();
+    }
+    Serial.println("...");
+    
+    if (retries == 100) {
+      Serial.println("Failed to connect to WiFi. Going to sleep.");
+      deepSleep();
+    }
+    delay(100);
+  }
+
+  Serial.print("IP address: ");
+  Serial.println(WiFi.localIP());
+  Serial.print("Gateway address: ");
+  Serial.println(WiFi.gatewayIP());
+  Serial.print("DNS address: ");
+  WiFi.dnsIP().printTo(Serial);
+  Serial.println("");
+
+}
+
+void wifiReconnect() {
+	WiFi.disconnect();
+	delay(10);
+	WiFi.forceSleepBegin();
+	delay(10);
+	WiFi.forceSleepWake();
+	delay(10);
+	WiFi.begin(SSID, WIFI_PASSWORD);
 }
 
 void wifiWaitConnected() {
@@ -234,13 +290,7 @@ void wifiWaitConnected() {
 		Serial.println("...");
 		if (retries == 100) {
 			Serial.println("Quick connect not working. Trying new scan.");
-			WiFi.disconnect();
-			delay(10);
-			WiFi.forceSleepBegin();
-			delay(10);
-			WiFi.forceSleepWake();
-			delay(10);
-			WiFi.begin(SSID, WIFI_PASSWORD);
+			wifiReconnect();
 		}
 		if (retries == 200) {
 			Serial.println("Failed to connect to WiFi. Going to sleep.");
@@ -249,8 +299,6 @@ void wifiWaitConnected() {
 		delay(100);
 	}
 }
-
-
 
 bool isRtcValid() {
 	bool rtcValid = false;
