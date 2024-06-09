@@ -292,7 +292,9 @@ void wifiWaitConnected() {
 			Serial.println("Quick connect not working. Trying new scan.");
 			wifiReconnect();
 		}
+
 		if (retries == 200) {
+
 			Serial.println("Failed to connect to WiFi. Going to sleep.");
 			deepSleep();
 		}
@@ -333,5 +335,3 @@ uint32_t calculateCRC32(const uint8_t *data, size_t length) {
 
 	return crc;
 }
-
-
