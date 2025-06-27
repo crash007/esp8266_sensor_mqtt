@@ -17,12 +17,9 @@
   #define DEBUG_PRINTLN(...)
 #endif
 
-#define SENSOR_POWER_PIN 13
-#define DHTPIN 4
-#define DHTTYPE DHT22
-#define ONE_WIRE_BUS_PIN 5
 
-const int sleepTime = 15 * 60 * 1e6;
+
+const int sleepTime = 30 * 60 * 1e6;
 
 //DHT dht(DHTPIN, DHTTYPE);
 OneWire oneWire(ONE_WIRE_BUS_PIN);
@@ -59,21 +56,24 @@ void mqttUpload(float ds18b20Temp, float dhtTemp, float dhtHum) {
                 //Unable to connect
                 deepSleep();
             }
-            delay(500);
+            delay(100);
         }
         retries++;
     }
 
     char buff[8];
     snprintf(buff, sizeof(buff), "%.3f", ds18b20Temp);
-    client.publish("/v1/esp12f-1/esp12f1-ds18b20", buff);
+    client.publish("/v1/esp12f-2/esp12f2-ds18b20", buff);
+    
     delay(5);
-    snprintf(buff, sizeof(buff), "%.3f", dhtTemp);
-    client.publish("/v1/esp12f-1/esp12f1-dht22-temp", buff);
-    delay(5);
-    snprintf(buff, sizeof(buff), "%.3f", dhtHum);
-    client.publish("/v1/esp12f-1/esp12f1-dht22-hum", buff);
-    delay(5);
+    
+//    snprintf(buff, sizeof(buff), "%.3f", dhtTemp);
+//    client.publish("/v1/esp12f-1/esp12f1-dht22-temp", buff);
+//    delay(5);
+//    snprintf(buff, sizeof(buff), "%.3f", dhtHum);
+//    client.publish("/v1/esp12f-1/esp12f1-dht22-hum", buff);
+//    delay(5);
+//    
     DEBUG_PRINTLN("Publish complete");
     delay(60);
     client.disconnect();
@@ -83,23 +83,38 @@ void mqttUpload(float ds18b20Temp, float dhtTemp, float dhtHum) {
 }
 
 void run() {
-    unsigned long totalTimeStart = millis();
-    WiFi.mode(WIFI_OFF);
-    WiFi.forceSleepBegin();
-//    delay(1);
+    
 #ifdef DEBUG
-    Serial.begin(9600);
+
+    Serial.begin(115200);
+    Serial.setDebugOutput(true);
+    while (! Serial); 
     DEBUG_PRINTLN("setup");
+    
+    DEBUG_PRINT("Wakeup reason: ");
+    DEBUG_PRINTLN(ESP.getResetReason());
+    WiFi.printDiag(Serial);  
 #endif
+
+    unsigned long totalTimeStart = millis();
+    unsigned long wifiConnectStart = wifiBegin();
+    //WiFi.mode(WIFI_OFF);
+    //WiFi.forceSleepBegin();
+    //delay(1);
+    // WiFi.setAutoConnect(false);
+
+   
     pinMode(SENSOR_POWER_PIN, OUTPUT);
     digitalWrite(SENSOR_POWER_PIN, HIGH);
-    //delay(550);
+    pinMode(SENSOR_GND_PIN, OUTPUT);
+    digitalWrite(SENSOR_GND_PIN, LOW);
+    delay(100);
 
 //    dht.begin();
 //    dhtHum = readDhtHumidity();
 //    dhtTemp = readDhtTemp();
 
-    unsigned long wifiConnectStart = wifiBegin();
+    
     ds18b20Temp = readDS18b20();
     digitalWrite(SENSOR_POWER_PIN, LOW);
     wifiWaitConnected();
@@ -115,36 +130,57 @@ void run() {
 }
 
 void setup() {
-
+ run();
 }
 
 void loop() {
-    run();
+   
 }
 
 void printAddress(DeviceAddress deviceAddress) {
     for (uint8_t i = 0; i < 8; i++) {
+        DEBUG_PRINT("0x");
         if (deviceAddress[i] < 16)
             DEBUG_PRINT("0");
         DEBUG_PRINT(deviceAddress[i], HEX);
-        DEBUG_PRINT(", ");
+        if (i < 7) {
+            DEBUG_PRINT(", ");
+        }
     }
     DEBUG_PRINTLN("");
 }
 
 float readDS18b20() {
     unsigned long start = millis();
-    //sensors.begin();
-    /*DeviceAddress address;
-     oneWire.search(address);
-     printAddress(address);
-     printAddress(ds18b20Address);
-     sensors.setResolution(ds18b20Address, 12);
+   
+#ifdef DEBUG   
+    
+    // sensors.begin();
 
-     DEBUG_PRINT("Sensor Resolution: ");
-     DEBUG_PRINTLN(sensors.getResolution(ds18b20Address), DEC);
-     DEBUG_PRINTLN();
-     */
+//    DeviceAddress address;
+//    while (oneWire.search(address)) {
+//        DEBUG_PRINT("Found DS18B20 sensor with address: ");
+//        printAddress(address);
+//    //    sensors.setResolution(address, 12);
+//        
+//        DEBUG_PRINT("Sensor Resolution: ");
+//        DEBUG_PRINTLN(sensors.getResolution(address), DEC);
+//
+//        sensors.requestTemperaturesByAddress(address);
+//        float tempC = sensors.getTempC(address);
+//        
+//        if (tempC == DEVICE_DISCONNECTED_C) {
+//            DEBUG_PRINTLN("Error: Could not read temperature data");
+//        } else {
+//            DEBUG_PRINT("Temperature for device: ");
+//            printAddress(address);
+//            DEBUG_PRINT(" is: ");
+//            DEBUG_PRINT(tempC);
+//            DEBUG_PRINTLN(" °C");
+//        }
+//    }
+#endif
+     
     sensors.setWaitForConversion(true);
     sensors.setCheckForConversion(false);
     sensors.requestTemperaturesByAddress(ds18b20Address);
@@ -181,13 +217,26 @@ float readDS18b20() {
 
 void deepSleep() {
     DEBUG_PRINTLN("Going to sleep.");
-    Serial.flush();
-    Serial.end();
+    //WiFi.disconnect(true);
+    //delay(1);
+    //WiFi.mode(WIFI_OFF);
+    //WiFi.forceSleepBegin();
+    //delay(5);
+    
+    #ifdef DEBUG
+      Serial.flush();
+      //Serial.end();
+    #endif
+    
     WiFi.disconnect(true);
     delay(1);
-    ESP.deepSleep(sleepTime, WAKE_RF_DISABLED);
-
-    //delay(11000);
+    WiFi.mode(WIFI_OFF);
+    delay(1);
+    WiFi.forceSleepBegin();
+    delay(1);
+   // ESP.deepSleep(sleepTime, WAKE_RF_DISABLED);
+    ESP.deepSleep(sleepTime, WAKE_RF_DEFAULT);
+   
 }
 
 void saveApChannelBssid() {
@@ -221,19 +270,23 @@ void printWifiInfo(unsigned long wifiConnectStart) {
 
 unsigned long wifiBegin() {
     unsigned long wifiConnectStart = millis();
-    WiFi.forceSleepBegin();
-    delay(15);
-    WiFi.forceSleepWake();
-    delay(15);
+   //WiFi.printDiag(Serial);
+    //WiFi.forceSleepWake();
+    //delay(100);
+    //WiFi.printDiag(Serial);
     WiFi.persistent(false);
+    delay(1);
     WiFi.mode(WIFI_STA);
-    delay(50);
+    //delay(100);
+    //WiFi.printDiag(Serial);
+    
     if (isRtcValid()) {
         DEBUG_PRINTLN("RTC is valid.");
         WiFi.config(rtcData.ip, rtcData.gateway, rtcData.subnet, rtcData.dns);
         WiFi.begin(SSID, WIFI_PASSWORD, rtcData.channel, rtcData.ap_mac, true);
     } else {
         DEBUG_PRINTLN("RTC is not valid.");
+        WiFi.config(local_IP, gateway, subnet, primaryDNS, secondaryDNS); 
         WiFi.begin(SSID, WIFI_PASSWORD);
     }
     return wifiConnectStart;
@@ -246,11 +299,12 @@ void wifiReconnectCachedBssid() {
     delay(10);
     WiFi.forceSleepWake();
     delay(10);
-
+    WiFi.persistent(false);
     if (isRtcValid()) {
         WiFi.begin(SSID, WIFI_PASSWORD, rtcData.channel, rtcData.ap_mac, true);
 
     } else {
+       WiFi.config(0U, 0U, 0U, 0U);
         WiFi.begin(SSID, WIFI_PASSWORD);
     }
 
@@ -267,7 +321,7 @@ void wifiReconnectCachedBssid() {
             DEBUG_PRINTLN("Failed to connect to WiFi. Going to sleep.");
             deepSleep();
         }
-        delay(100);
+        delay(200);
     }
 
     DEBUG_PRINT("IP address: ");
@@ -282,33 +336,95 @@ void wifiReconnectCachedBssid() {
 }
 
 void wifiReconnect() {
+  DEBUG_PRINTLN("Reconnecting......");
+    //WiFi.printDiag(Serial);
     WiFi.disconnect();
-    delay(10);
+    delay(100);
     WiFi.forceSleepBegin();
-    delay(10);
+    delay(100);
     WiFi.forceSleepWake();
-    delay(10);
+    delay(100);
+    WiFi.mode(WIFI_STA);
+    WiFi.persistent(false);
     WiFi.begin(SSID, WIFI_PASSWORD);
+    //WiFi.printDiag(Serial);
 }
 
 void wifiWaitConnected() {
     int retries = 0;
     while (WiFi.status() != WL_CONNECTED) {
         retries++;
+
+    switch(WiFi.status()) {
+            case WL_NO_SHIELD:
+               DEBUG_PRINTLN("No WiFi shield is present");
+                break;
+            case WL_IDLE_STATUS:
+               DEBUG_PRINTLN("WiFi is in idle status");
+                break;
+            case WL_NO_SSID_AVAIL:
+               DEBUG_PRINTLN("No SSID available - check your SSID");
+                break;
+            case WL_SCAN_COMPLETED:
+               DEBUG_PRINTLN("WiFi scan completed");
+                break;
+           
+            case WL_CONNECTION_LOST:
+               DEBUG_PRINTLN("Connection lost");
+                break;
+            case WL_DISCONNECTED:
+               DEBUG_PRINT("WiFi is disconnected");
+                break;
+            default:
+               DEBUG_PRINTLN("Unknown status");
+                break;
+        }
+
+        
         if (WiFi.status() == WL_CONNECT_FAILED) {
             DEBUG_PRINTLN(
                     "Failed to connect to WiFi. Please verify credentials: ");
             deepSleep();
         }
+        DEBUG_PRINT(WiFi.status());
         DEBUG_PRINTLN("...");
-        if (isRtcValid() && retries == 100) {
+        if(retries == 19 && WL_NO_SSID_AVAIL == WiFi.status()){
+          DEBUG_PRINTLN("NO SSID available going to sleep");
+          deepSleep();
+        }
+        
+        if (isRtcValid() && retries == 20) {
             DEBUG_PRINTLN("Quick connect not working. Trying new scan.");
             wifiReconnect();
         }
-        if (retries == 400) {
+
+        if(retries == 100) {
+           wifiReconnect();
+        }
+
+//        if(retries == 200) {
+//          DEBUG_PRINTLN("Disable wifi and wait 3 sek");
+//          WiFi.disconnect(true);
+//          delay(100);
+//          WiFi.mode(WIFI_OFF);
+//          delay(100);
+//          WiFi.forceSleepBegin();
+//          delay(3000);
+//
+//          
+//          WiFi.forceSleepWake();
+//          delay(100);
+//          WiFi.persistent(false);
+//          delay(100);
+//          WiFi.mode(WIFI_STA);
+//          delay(100);
+//          WiFi.begin(SSID, WIFI_PASSWORD);
+//          
+//        }
+        if (retries == 300) {
             DEBUG_PRINTLN("Failed to connect to WiFi. Going to sleep.");
             deepSleep();
         }
-        delay(200);
+        delay(300);
     }
 }
