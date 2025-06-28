@@ -19,7 +19,7 @@
 
 
 
-const int sleepTime = 30 * 60 * 1e6;
+
 
 //DHT dht(DHTPIN, DHTTYPE);
 OneWire oneWire(ONE_WIRE_BUS_PIN);
@@ -63,7 +63,7 @@ void mqttUpload(float ds18b20Temp, float dhtTemp, float dhtHum) {
 
     char buff[8];
     snprintf(buff, sizeof(buff), "%.3f", ds18b20Temp);
-    client.publish("/v1/esp12f-2/esp12f2-ds18b20", buff);
+    client.publish(DS18B20_TOPIC, buff);
     
     delay(5);
     
@@ -235,7 +235,7 @@ void deepSleep() {
     WiFi.forceSleepBegin();
     delay(1);
    // ESP.deepSleep(sleepTime, WAKE_RF_DISABLED);
-    ESP.deepSleep(sleepTime, WAKE_RF_DEFAULT);
+    ESP.deepSleep(SLEEP_TIME, WAKE_RF_DEFAULT);
    
 }
 
