@@ -17,16 +17,24 @@
 #define DS18B20_ADDRESS { 0x28, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }
 
 IPAddress local_IP(192, 168, 1, 201);
-#define ONE_WIRE_BUS_PIN D1
 
 IPAddress gateway(192, 168, 1, 1);    // Set your Gateway IP address
 IPAddress subnet(255, 255, 255, 0);   // Set your Subnet Mask
 IPAddress primaryDNS(8, 8, 8, 8);     // Optional: Set primary DNS server
 IPAddress secondaryDNS(8, 8, 4, 4);   // Optional: Set secondary DNS server
 
-#define SENSOR_GND_PIN D3
-#define SENSOR_POWER_PIN D2
 #define DHTPIN 4
 #define DHTTYPE DHT22
+
+#ifdef ESP8266
+  #define ONE_WIRE_BUS_PIN D1
+  #define SENSOR_POWER_PIN D2
+  #define SENSOR_GND_PIN D3
+#else
+  #define ONE_WIRE_BUS_PIN 4 // GPIO4 (example)
+  #define SENSOR_POWER_PIN 5 // GPIO5 (example)
+  #define SENSOR_GND_PIN 16  // GPIO16 (example)
+#endif
+
 
 #endif /* SETTINGS_H_ */
