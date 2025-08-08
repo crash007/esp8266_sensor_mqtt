@@ -24,10 +24,11 @@ struct RtcData {
 #ifdef ESP8266
   extern RtcData rtcData; // Declared extern, defined in rtc.cpp
 #else
-  RTC_DATA_ATTR RtcData rtcData; // Persist in RTC memory for ESP32
+  extern RTC_DATA_ATTR RtcData rtcData; // Declared extern Persist in RTC memory for ESP32
 #endif
 
 uint32_t calculateCRC32(const uint8_t *data, size_t length);
 bool isRtcValid();
+void invalidateRtcData();
 
 #endif /* RTC_H_ */

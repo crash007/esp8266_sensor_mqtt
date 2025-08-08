@@ -1,17 +1,12 @@
 #ifndef MQTT_MANAGER_H
 #define MQTT_MANAGER_H
 
-#ifdef ESP8266
-  #include <ESP8266WiFi.h>
-#else
-  #include <WiFi.h>
-#endif
+#include "Settings.h"
+//#include <PubSubClient.h>
 
-#include <PubSubClient.h>
+//extern WiFiClient espClient;
+//extern PubSubClient client;
 
-extern WiFiClient espClient;
-extern PubSubClient client;
-
-void mqttUpload(float ds18b20Temp, float dhtTemp, float dhtHum);
+void mqttUpload(float ds18b20Temp, float dhtTemp, float dhtHum, float batteryVoltage);
 
 #endif

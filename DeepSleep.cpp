@@ -1,9 +1,5 @@
 #include "DeepSleep.h"
-#ifdef ESP8266
-  #include <ESP8266WiFi.h>
-#else
-  #include <WiFi.h>
-#endif
+
 #include <DallasTemperature.h> // For DeviceAddress (via Settings.h)
 #include "Settings.h"
 #include "Debug.h"
@@ -46,5 +42,29 @@ void saveApChannelBssid() {
   rtcData.crc32 = calculateCRC32(((uint8_t*)(&rtcData)) + 4, sizeof(rtcData) - 4);
 #ifdef ESP8266
   ESP.rtcUserMemoryWrite(0, (uint32_t*)(&rtcData), sizeof(rtcData));
+#endif
+}
+
+void logWakeUpReason() {
+  
+#ifdef ESP8266
+  DEBUG_PRINT("Reset reason: ");
+  DEBUG_PRINTLN(ESP.getResetReason());
+#else // ESP32
+  DEBUG_PRINT("Reset reason: ");
+  switch (esp_reset_reason()) {
+    case ESP_RST_UNKNOWN: DEBUG_PRINTLN("Unknown"); break;
+    case ESP_RST_POWERON: DEBUG_PRINTLN("Power-on"); break;
+    case ESP_RST_EXT: DEBUG_PRINTLN("External"); break;
+    case ESP_RST_SW: DEBUG_PRINTLN("Software"); break;
+    case ESP_RST_PANIC: DEBUG_PRINTLN("Panic"); break;
+    case ESP_RST_INT_WDT: DEBUG_PRINTLN("Interrupt Watchdog"); break;
+    case ESP_RST_TASK_WDT: DEBUG_PRINTLN("Task Watchdog"); break;
+    case ESP_RST_WDT: DEBUG_PRINTLN("Other Watchdog"); break;
+    case ESP_RST_DEEPSLEEP: DEBUG_PRINTLN("Deep Sleep"); break;
+    case ESP_RST_BROWNOUT: DEBUG_PRINTLN("Brownout"); break;
+    case ESP_RST_SDIO: DEBUG_PRINTLN("SDIO"); break;
+    default: DEBUG_PRINTLN("Unknown reset reason"); break;
+  }
 #endif
 }

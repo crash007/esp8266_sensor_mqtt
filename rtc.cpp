@@ -1,7 +1,11 @@
 #include "rtc.h"
 
+
+
 #ifdef ESP8266
-RtcData rtcData; // Define for ESP8266
+RtcData rtcData; // Defined for ESP8266
+#else
+RTC_DATA_ATTR RtcData rtcData; // Defined for ESP32 with RTC_DATA_ATTR
 #endif
 
 uint32_t calculateCRC32(const uint8_t *data, size_t length) {
@@ -36,4 +40,11 @@ bool isRtcValid() {
   rtcValid = (crc == rtcData.crc32);
 #endif
   return rtcValid;
+}
+
+void invalidateRtcData() {
+  rtcData.crc32 = 0; // Invalidate RTC data
+#ifdef ESP8266
+  ESP.rtcUserMemoryWrite(0, (uint32_t*)(&rtcData), sizeof(rtcData));
+#endif
 }

@@ -1,40 +1,75 @@
 /*
- * Settings.h
+ * Settings.h.example
  *
  *  Created on: 25 mars 2018
  *      Author: pewa
+ *
+ * This is an example configuration file. Rename to Settings.h and modify
+ * the values to match your setup.
  */
 
 #ifndef SETTINGS_H_
 #define SETTINGS_H_
 
-#define SSID "ssid"
-#define WIFI_PASSWORD "pwd"
-#define MQTT_SERVER "server.com"
-#define MQTT_CLIENT_NAME "client"
-#define MQTT_USERNAME "user"
-#define MQTT_PASSWORD "password"
-#define DS18B20_ADDRESS { 0x28, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }
-
-IPAddress local_IP(192, 168, 1, 201);
-
-IPAddress gateway(192, 168, 1, 1);    // Set your Gateway IP address
-IPAddress subnet(255, 255, 255, 0);   // Set your Subnet Mask
-IPAddress primaryDNS(8, 8, 8, 8);     // Optional: Set primary DNS server
-IPAddress secondaryDNS(8, 8, 4, 4);   // Optional: Set secondary DNS server
-
-#define DHTPIN 4
-#define DHTTYPE DHT22
+#define DEBUG // Enable debug mode (comment out to disable)
 
 #ifdef ESP8266
-  #define ONE_WIRE_BUS_PIN D1
-  #define SENSOR_POWER_PIN D2
-  #define SENSOR_GND_PIN D3
+  #include <ESP8266WiFi.h> // For ESP8266
 #else
-  #define ONE_WIRE_BUS_PIN 4 // GPIO4 (example)
-  #define SENSOR_POWER_PIN 5 // GPIO5 (example)
-  #define SENSOR_GND_PIN 16  // GPIO16 (example)
+  #include <WiFi.h> // For ESP32
+#endif
+#include <DallasTemperature.h> // For DeviceAddress
+
+// WiFi and MQTT settings
+#define SSID "your_wifi_ssid" // Replace with your WiFi SSID
+#define WIFI_PASSWORD "your_wifi_password" // Replace with your WiFi password
+#define MQTT_SERVER "your.mqtt.server.com" // Replace with your MQTT server address
+#define MQTT_CLIENT_NAME "ESPClient" // Replace with your MQTT client name
+#define MQTT_USERNAME "your_mqtt_username" // Replace with your MQTT username
+#define MQTT_PASSWORD "your_mqtt_password" // Replace with your MQTT password
+
+// Connection retry and delay settings
+#define WIFI_RECONNECT_RETRIES 100
+#define WIFI_QUICK_CONNECT_RETRIES 3
+#define DEEP_SLEEP_DELAY 1
+#define WIFI_SSID_FAIL_RETRIES 19
+#define WIFI_MAX_RETRIES 300
+#define WIFI_QUICK_CONNECT_RETRIES 20
+#define MQTT_MAX_RETRIES 3
+#define MQTT_PORT 1883
+#define MQTT_CONNECT_DELAY 100
+#define MQTT_PUBLISH_DELAY 5
+#define MQTT_DISCONNECT_DELAY 60
+#define WIFI_CONNECT_DELAY 300
+#define WIFI_RECONNECT_DELAY 100
+#define WIFI_RECONNECT_BSSID_DELAY 200
+#define WIFI_RECONNECT_BSSID_SHORT_DELAY 10
+
+// DS18B20 temperature sensor settings
+const DeviceAddress ds18b20Address = { 0x28, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }; // Replace with your DS18B20 sensor address
+
+
+// Pin configuration
+#ifdef ESP8266
+  #define ONE_WIRE_BUS_PIN D1 // DS18B20 data pin for ESP8266
+  #define SENSOR_POWER_PIN D2 // Power pin for sensors
+  #define SENSOR_GND_PIN D3   // Ground pin for sensors
+#else
+  #define ONE_WIRE_BUS_PIN 27 // DS18B20 data pin for ESP32 (example)
+  #define SENSOR_POWER_PIN 14 // Power pin for sensors (example)
+  #define SENSOR_GND_PIN 12   // Ground pin for sensors (example)
 #endif
 
+#define DHTPIN 4 // DHT22 data pin
+#define DHTTYPE DHT22 // DHT sensor type
+#define BATTERY_VOLTAGE_PIN 35 // Pin for battery voltage measurement (example for ESP32)
+#define BME_280_POWER_ENABLE_PIN 26 // Power enable pin for BME280 sensor (example)
+
+// MQTT topics
+#define DS18B20_TOPIC "/v1/your_device/ds18b20" // Replace with your MQTT topic for DS18B20
+#define BATTERY_VOLTAGE_TOPIC "/v1/your_device/battery" // Replace with your MQTT topic for battery voltage
+
+// Deep sleep settings
+#define SLEEP_TIME 30 * 60 * 1e6 // Sleep time in microseconds (example: 30 minutes)
 
 #endif /* SETTINGS_H_ */

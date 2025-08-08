@@ -5,6 +5,7 @@
 
 void deepSleep();
 void saveApChannelBssid();
+void logWakeUpReason();
 extern bool isRtcValid();
 
 #endif
